@@ -57,8 +57,8 @@ type (
 		} `envPrefix:"WEB_PROXY_"`
 
 		Integrations struct {
-			BloxlinkApiKey string `env:"BLOXLINK_API_KEY"`
-			SecureProxyUrl string `env:"SECURE_PROXY_URL"`
+			BloxlinkApiKey string `b949924c-d4cc-4601-adc7-f9f2f9342488`
+			SecureProxyUrl string `https://github.com/TicketsBot-cloud/tickets.rs/secure-proxy`
 		}
 
 		Database struct {
