@@ -444,104 +444,108 @@ func OpenTicket(ctx context.Context, cmd registry.InteractionContext, panel *dat
 
 	// Send mentions
 	group.Go(func() error {
-		span := sentry.StartSpan(rootSpan.Context(), "Load guild metadata from database")
-		metadata, err := dbclient.Client.GuildMetadata.Get(ctx, cmd.GuildId())
-		span.Finish()
-		if err != nil {
-			return err
-		}
-
-		// mentions
-		var content string
-
-		// Append on-call role pings
-		if isThread {
-			if panel == nil {
-				if metadata.OnCallRole != nil {
-					content += fmt.Sprintf("<@&%d>", *metadata.OnCallRole)
-				}
-			} else {
-				if panel.WithDefaultTeam && metadata.OnCallRole != nil {
-					content += fmt.Sprintf("<@&%d>", *metadata.OnCallRole)
-				}
-
-				span := sentry.StartSpan(rootSpan.Context(), "Get teams from database")
-				teams, err := dbclient.Client.PanelTeams.GetTeams(ctx, panel.PanelId)
-				span.Finish()
-				if err != nil {
-					return err
-				} else {
-					for _, team := range teams {
-						if team.OnCallRole != nil {
-							content += fmt.Sprintf("<@&%d>", *team.OnCallRole)
-						}
-					}
-				}
-			}
-		}
-
-		if panel != nil {
-			// roles
-			span := sentry.StartSpan(rootSpan.Context(), "Get panel role mentions from database")
-			roles, err := dbclient.Client.PanelRoleMentions.GetRoles(ctx, panel.PanelId)
-			span.Finish()
-			if err != nil {
-				return err
-			} else {
-				for _, roleId := range roles {
-					if roleId == cmd.GuildId() {
-						content += "@everyone"
-					} else {
-						content += fmt.Sprintf("<@&%d>", roleId)
-					}
-				}
-			}
-
-			// user
-			span = sentry.StartSpan(rootSpan.Context(), "Get panel user mention setting from database")
-			shouldMentionUser, err := dbclient.Client.PanelUserMention.ShouldMentionUser(ctx, panel.PanelId)
-			span.Finish()
-			if err != nil {
-				return err
-			} else {
-				if shouldMentionUser {
-					content += fmt.Sprintf("<@%d>", cmd.UserId())
-				}
-			}
-		}
-
-		if content != "" {
-			content = fmt.Sprintf("-# ||%s||", content)
-			if len(content) > 2000 {
-				content = content[:2000]
-			}
-
-			span := sentry.StartSpan(rootSpan.Context(), "Send ping message")
-			_, err := cmd.Worker().CreateMessageComplex(ch.Id, rest.CreateMessageData{
-				Content: content,
-				AllowedMentions: message.AllowedMention{
-					Parse: []message.AllowedMentionType{
-						message.EVERYONE,
-						message.USERS,
-						message.ROLES,
-					},
-				},
-			})
-			span.Finish()
-
-			if err != nil {
-				return err
-			}
-
-			// Disable delete message
-			// error is likely to be a permission error
-			// span = sentry.StartSpan(span.Context(), "Delete ping message")
-			// _ = cmd.Worker().DeleteMessage(ch.Id, pingMessage.Id)
-			// span.Finish()
-		}
-
-		return nil
+	    span := sentry.StartSpan(rootSpan.Context(), "Load guild metadata from database")
+	    metadata, err := dbclient.Client.GuildMetadata.Get(ctx, cmd.GuildId())
+	    span.Finish()
+	    if err != nil {
+	        return err
+	    }
+	
+	    // mentions
+	    var content string
+	
+	    // Append on-call role pings
+	    if isThread {
+	        if panel == nil {
+	            if metadata.OnCallRole != nil {
+	                content += fmt.Sprintf("<@&%d>", *metadata.OnCallRole)
+	            }
+	        } else {
+	            if panel.WithDefaultTeam && metadata.OnCallRole != nil {
+	                content += fmt.Sprintf("<@&%d>", *metadata.OnCallRole)
+	            }
+	
+	            span := sentry.StartSpan(rootSpan.Context(), "Get teams from database")
+	            teams, err := dbclient.Client.PanelTeams.GetTeams(ctx, panel.PanelId)
+	            span.Finish()
+	            if err != nil {
+	                return err
+	            } else {
+	                for _, team := range teams {
+	                    if team.OnCallRole != nil {
+	                        content += fmt.Sprintf("<@&%d>", *team.OnCallRole)
+	                    }
+	                }
+	            }
+	        }
+	    }
+	
+	    if panel != nil {
+	        // roles
+	        span := sentry.StartSpan(rootSpan.Context(), "Get panel role mentions from database")
+	        roles, err := dbclient.Client.PanelRoleMentions.GetRoles(ctx, panel.PanelId)
+	        span.Finish()
+	        if err != nil {
+	            return err
+	        } else {
+	            for _, roleId := range roles {
+	                if roleId == cmd.GuildId() {
+	                    content += "@everyone"
+	                } else {
+	                    content += fmt.Sprintf("<@&%d>", roleId)
+	                }
+	            }
+	        }
+	
+	        // user
+	        span = sentry.StartSpan(rootSpan.Context(), "Get panel user mention setting from database")
+	        shouldMentionUser, err := dbclient.Client.PanelUserMention.ShouldMentionUser(ctx, panel.PanelId)
+	        span.Finish()
+	        if err != nil {
+	            return err
+	        } else {
+	            if shouldMentionUser {
+	                content += fmt.Sprintf("<@%d>", cmd.UserId())
+	            }
+	        }
+	    }
+	
+	    if content != "" {
+	        content = fmt.Sprintf("-# ||%s||", content)
+	        if len(content) > 2000 {
+	            content = content[:2000]
+	        }
+	
+	        span := sentry.StartSpan(rootSpan.Context(), "Send ping message")
+	        pingMessage, err := cmd.Worker().CreateMessageComplex(ch.Id, rest.CreateMessageData{
+	            Content: content,
+	            AllowedMentions: message.AllowedMention{
+	                Parse: []message.AllowedMentionType{
+	                    message.EVERYONE,
+	                    message.USERS,
+	                    message.ROLES,
+	                },
+	            },
+	        })
+	        span.Finish()
+	
+	        if err != nil {
+	            return err
+	        }
+	
+	        // Delete the ping message
+	        span = sentry.StartSpan(rootSpan.Context(), "Delete ping message")
+	        err = cmd.Worker().DeleteMessage(ch.Id, pingMessage.Id)
+	        span.Finish()
+	
+	        if err != nil {
+	            return err
+	        }
+	    }
+	
+	    return nil
 	})
+
 
 	// Create webhook
 	// TODO: Create webhook on use, rather than on ticket creation.
