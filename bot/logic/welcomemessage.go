@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/TicketsBot/common/integrations/bloxlink"
+	"github.com/csrpdevteam/common/integrations/bloxlink"
 	"github.com/TicketsBot/common/premium"
 	"github.com/TicketsBot/common/sentry"
 	"github.com/TicketsBot/database"
@@ -17,7 +17,7 @@ import (
 	"github.com/TicketsBot/worker/bot/command/registry"
 	"github.com/TicketsBot/worker/bot/customisation"
 	"github.com/TicketsBot/worker/bot/dbclient"
-	"github.com/TicketsBot/worker/bot/integrations"
+	"github.com/csrpdevteam/worker/bot/integrations"
 	"github.com/TicketsBot/worker/bot/utils"
 	"github.com/TicketsBot/worker/config"
 	"github.com/TicketsBot/worker/i18n"
