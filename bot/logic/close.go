@@ -28,17 +28,37 @@ func CloseTicket(ctx context.Context, cmd registry.CommandContext, reason *strin
 	var success bool
 	errorContext := cmd.ToErrorContext()
 
-	// Get ticket struct
-	ticket, err := dbclient.Client.Tickets.GetByChannelAndGuild(ctx, cmd.ChannelId(), cmd.GuildId())
-	if err != nil {
-		cmd.HandleError(err)
-		return
-	}
+		// Get ticket struct
+		ticket, err := dbclient.Client.Tickets.GetByChannelAndGuild(ctx, cmd.ChannelId(), cmd.GuildId())
+		if err != nil {
+		    cmd.HandleError(err)
+		    return
+		}
+		
+		// Check if it's a valid ticket or in an allowed category
+		if ticket.Id == 0 || ticket.GuildId != cmd.GuildId() {
+		    // Fetch the channel details
+		    channel, err := cmd.Worker().GetChannel(cmd.ChannelId())
+		    if err != nil {
+		        cmd.HandleError(err)
+		        return
+		    }
+		
+		    
+		    allowedCategories := map[uint64]bool{
+		        1176986720772833421: true, // General Inquiry Tickets
+		        1250633639545536523: true, // Internal Affair Inquiries
+		        1139516721166827531: true, // Rx queue
+		        1191433020868132924: true, // Partnership Inquiry
+		    }
+		
+		    // Check if the channel is in an allowed category
+		    if channel.ParentId == nil || !allowedCategories[*channel.ParentId] {
+		        cmd.Reply(customisation.Red, i18n.Error, i18n.MessageNotATicketChannel)
+		        return
+		    }
+		}
 
-	if ticket.Id == 0 || ticket.GuildId != cmd.GuildId() {
-		cmd.Reply(customisation.Red, i18n.Error, i18n.MessageNotATicketChannel)
-		return
-	}
 
 	defer func() {
 		if !success {
